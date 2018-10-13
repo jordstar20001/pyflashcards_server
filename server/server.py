@@ -16,6 +16,8 @@ import os
 
 # RUNTIME VARS, REPLACE WITH ENV VARS
 
+serverName = "Jordan's Test Server."
+
 listenIP = "0.0.0.0"
 
 listenPort = 8080
@@ -41,6 +43,12 @@ from flask import Flask, request, make_response, jsonify
 server = Flask(__name__)
 
 # START routing
+
+@server.route("/0", methods=["GET"])
+def send_heartbeat():
+    return make_response(jsonify({
+        "name":serverName
+    })), 200
 
 @server.route("/1/signup", methods=["POST"]) # Sign up a user.
 def sign_up_user():
@@ -116,10 +124,23 @@ def login_user():
 @server.route("/1/login", methods=["GET"])
 def check_if_user_logged_in():
     if not token_auth(request):
-        return make_response(), 200
+        return make_response(), 403
 
     else:
+        return make_response(), 200
+
+@server.route("/1/login", methods=["DELETE"])
+def log_out_user():
+    if not token_auth(request):
         return make_response(), 403
+
+    token = request.headers["Token"]
+    user = runtime_tokens[token]['username']
+    del runtime_tokens[token]
+    del runtime_users[user]
+    accessible_users.remove(user)
+    return make_response(), 200
+
 
 # ----------------------------------------------------- /////2\\\\\ -------------------------------
 
@@ -149,6 +170,10 @@ def create_chat_room():
 
     uName = reqJson['username']
 
+    title = reqJson['title']
+
+    description = reqJson['description']
+
     roomPassword = reqJson['room_password']
 
     max_users = reqJson['max_users']
@@ -157,10 +182,15 @@ def create_chat_room():
         return create_status_response("You already have a chatroom.", 500)
 
     else:
+
         runtime_chat_rooms[uName] = {
             "users":[
                 uName
             ],
+
+            "title":title,
+
+            "description":description,
 
             "password":roomPassword,
 
@@ -169,6 +199,20 @@ def create_chat_room():
         }
 
         return make_response(), 201
+
+@server.route("/2/chatrooms/getall", methods=["GET"])
+def get_all_chat_rooms():
+    if not token_auth(request):
+        return make_response(), 403
+
+    listResp = []
+    for owner in runtime_chat_rooms.keys():
+        listResp.append(owner)
+
+    return make_response(jsonify({
+        "rooms":listResp,
+    })), 200
+
 
 @server.route("/2/chatrooms/get", methods=["POST"]) # TODO refactor this so it is GET and uses URL to pass id
 def get_chat_room_info():
@@ -184,11 +228,17 @@ def get_chat_room_info():
 
     if owner in runtime_chat_rooms:
         passwordEnabled = False
-        if runtime_chat_rooms[owner]['password'] != "":
+        currentRoom = runtime_chat_rooms[owner]
+        if currentRoom['password'] != "":
             passwordEnabled = True
         resp = make_response(jsonify({
-            'users': runtime_chat_rooms[owner]['users'],
-            'password_enabled': passwordEnabled
+            "users": currentRoom['users'],
+            "title": currentRoom['title'],
+            "description": currentRoom['description'],
+            "max_users": currentRoom['max_users'],
+            "password_enabled": passwordEnabled,
+
+
         }))
 
         return resp, 200
