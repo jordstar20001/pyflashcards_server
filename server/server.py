@@ -166,6 +166,7 @@ def create_chat_room():
     if not request.is_json:
         return make_response(), 400
 
+
     reqJson = request.get_json()
 
     uName = reqJson['username']
@@ -177,6 +178,14 @@ def create_chat_room():
     roomPassword = reqJson['room_password']
 
     max_users = reqJson['max_users']
+
+    # VALIDATION
+
+    for val in reqJson:
+        if len(str(reqJson[val])) == 0 and val != 'room_password':
+            return create_status_response("Invalid input.", 500);
+
+
 
     if uName in runtime_chat_rooms:
         return create_status_response("You already have a chatroom.", 500)
@@ -206,7 +215,7 @@ def get_all_chat_rooms():
         return make_response(), 403
 
     listResp = []
-    for owner in runtime_chat_rooms.keys():
+    for owner in runtime_chat_rooms:
         listResp.append(owner)
 
     return make_response(jsonify({
