@@ -258,6 +258,8 @@ def get_chat_room_info():
 @server.route("/2/chatrooms/join", methods=["POST"]) # TODO refactor this so it is GET and uses URL to pass id
 def join_chat_room():
 
+    if not token_auth(request):
+        return make_response(), 403
 
     if not request.is_json:
         return make_response(), 400
