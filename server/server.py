@@ -271,10 +271,10 @@ def join_chat_room():
     user = reqJson['username']
 
     if not token_auth_with_user(request, user):
-        return make_response(), 403
+        return create_status_response("User not authenticated.", 403)
 
     if owner not in runtime_chat_rooms:
-        return create_status_response("Room not found. The room may have expired, or the owner may have changed.", 500)
+        return create_status_response("Room not found. The room may have expired, or the owner may have changed.", 400)
 
 
     room_password_attempt = ""
@@ -283,7 +283,7 @@ def join_chat_room():
         room_password_attempt = reqJson['password']
 
     if room_password_attempt == runtime_chat_rooms[owner]['password']:
-        token = req.headers["Token"]
+        token = request.headers["Token"]
         runtime_chat_rooms[owner]['users'].append(runtime_tokens[token]['username'])
         return make_response(), 200
 
