@@ -20,9 +20,9 @@ serverName = "Jordan's Test Server."
 
 listenIP = "0.0.0.0"
 
-listenPort = 8080
+listenPort = 21
 
-userCredsFile = Path("data/") / "credentials.json"
+userCredsFile = "data/credentials.json"
 
 # END RUNTIME VARS
 
@@ -278,6 +278,14 @@ def join_chat_room():
     if owner not in runtime_chat_rooms:
         return create_status_response("Room not found. The room may have expired, or the owner may have changed.", 400)
 
+    if user in runtime_chat_rooms[owner]['users']:
+        return create_status_response("You are already in this room.")
+
+    if len(runtime_chat_rooms[owner]['users']) >= runtime_chat_rooms[owner]['max_users']:
+        return create_status_response("Room full.", 403)
+
+
+
 
     room_password_attempt = ""
 
@@ -381,6 +389,10 @@ def kick_user():
         if owner in runtime_chat_rooms:
             if owner == user or userToKick == user:
                 if userToKick in runtime_chat_rooms[owner]['users']:
+                    if userToKick == owner:
+                        del runtime_chat_rooms[owner]
+                        return make_response(), 200
+
                     index = runtime_chat_rooms[owner]['users'].index(userToKick)
                     del runtime_chat_rooms[owner]['users'][index]
                     return make_response(), 200
@@ -417,10 +429,15 @@ def new_message_in_chatroom(username, chatroom_owner, message):
             "message": message
         })
 
-        return True
-
     else:
         return False
+
+    if len(runtime_chat_rooms[chatroom_owner]['message_bank']) >= 80:
+        del runtime_chat_rooms[chatroom_owner]['message_bank'][0]
+
+    return True
+
+
 
 def token_auth_with_user(req, user):
     token = req.headers["Token"]
