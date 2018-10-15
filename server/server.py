@@ -203,7 +203,9 @@ def create_chat_room():
 
             "password":roomPassword,
 
-            "max_users":max_users
+            "max_users":max_users,
+
+            "message_bank":[]
 
         }
 
@@ -294,7 +296,29 @@ def join_chat_room():
 
 
 
+@server.route("/2/chatrooms/message", methods=["POST", "GET"])
+def message_handle():
+    # New message
+    if request.method = "POST":
+        if not reqJson.is_json:
+            return make_response(), 400
 
+        if not token_auth(request):
+            return make_response(), 403
+
+        # Get data
+
+        reqJson = request.get_json()
+
+        
+
+        new_message_in_chatroom:
+
+        return "NotImplementedException"
+
+    # Read messages
+    elif request.method = "GET":
+        return "NotImplementedException"
 
 
 
@@ -310,6 +334,9 @@ def token_auth(req):
 
     else:
         return False
+
+def new_message_in_chatroom(message):
+
 
 def token_auth_with_user(req, user):
     token = req.headers["Token"]
