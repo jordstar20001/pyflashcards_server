@@ -299,8 +299,8 @@ def join_chat_room():
 @server.route("/2/chatrooms/message", methods=["POST", "GET"])
 def message_handle():
     # New message
-    if request.method = "POST":
-        if not reqJson.is_json:
+    if request.method == "POST":
+        if not request.is_json:
             return make_response(), 400
 
         if not token_auth(request):
@@ -310,15 +310,53 @@ def message_handle():
 
         reqJson = request.get_json()
 
-        
+        username = reqJson['username']
 
-        new_message_in_chatroom:
+        owner = reqJson['owner']
+
+        message = reqJson['message']
+
+        if owner not in runtime_chat_rooms:
+
+
+            return create_status_response("Room not found.", 400)
+
+        if username in runtime_chat_rooms[owner]['users']:
+            if token_auth_with_user(request, username):
+                if(new_message_in_chatroom(username, owner, message)):
+                    return make_response(), 201
+
+                else:
+                    return create_status_response("Message was not sent.", 500)
+
+            else:
+                return make_response(), 403
+
+        else:
+            return make_response(), 403
+
+
+
+
+
+
+
+
 
         return "NotImplementedException"
 
     # Read messages
-    elif request.method = "GET":
-        return "NotImplementedException"
+    elif request.method == "GET":
+        if not token_auth(request):
+            return make_response(), 403
+
+        else:
+            token = request.headers["Token"]
+            owner = request.headers["Owner"]
+            user = runtime_tokens[token]['username']
+            if user in runtime_chat_rooms[owner]['users']:
+                messages = runtime_chat_rooms[owner]['message_bank']
+                return make_response(jsonify(messages))
 
 
 
@@ -335,8 +373,19 @@ def token_auth(req):
     else:
         return False
 
-def new_message_in_chatroom(message):
+def new_message_in_chatroom(username, chatroom_owner, message):
+    if username in runtime_chat_rooms[chatroom_owner]['users']:
+        # Add message to buffer
 
+        runtime_chat_rooms[chatroom_owner]['message_bank'].append({
+            "sender": username,
+            "message": message
+        })
+
+        return True
+
+    else:
+        return False
 
 def token_auth_with_user(req, user):
     token = req.headers["Token"]
