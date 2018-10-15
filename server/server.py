@@ -317,8 +317,6 @@ def message_handle():
         message = reqJson['message']
 
         if owner not in runtime_chat_rooms:
-
-
             return create_status_response("Room not found.", 400)
 
         if username in runtime_chat_rooms[owner]['users']:
@@ -333,7 +331,7 @@ def message_handle():
                 return make_response(), 403
 
         else:
-            return make_response(), 403
+            return create_status_response("Disconnected. You have been kicked.", 403)
 
 
 
@@ -354,12 +352,47 @@ def message_handle():
             token = request.headers["Token"]
             owner = request.headers["Owner"]
             user = runtime_tokens[token]['username']
-            if user in runtime_chat_rooms[owner]['users']:
-                messages = runtime_chat_rooms[owner]['message_bank']
-                return make_response(jsonify({
-                    "messages":messages
-                }))
+            if owner in runtime_chat_rooms:
+                if user in runtime_chat_rooms[owner]['users']:
+                    messages = runtime_chat_rooms[owner]['message_bank']
+                    return make_response(jsonify({
+                        "messages":messages
+                    })), 200
 
+                else:
+                    return create_status_response("Disconnected. You have been kicked.", 403)
+
+            else:
+                return create_status_response("Disconnected. Room closed.", 404);
+
+
+
+@server.route("/2/chatrooms/management/users", methods=["DELETE"])
+def kick_user():
+    if not token_auth(request):
+        return make_response(), 403
+
+    else:
+        token = request.headers["Token"]
+        owner = request.headers["Owner"]
+        userToKick = request.headers["UserKick"]
+
+        user = runtime_tokens[token]['username']
+        if owner in runtime_chat_rooms:
+            if owner == user or userToKick == user:
+                if userToKick in runtime_chat_rooms[owner]['users']:
+                    index = runtime_chat_rooms[owner]['users'].index(userToKick)
+                    del runtime_chat_rooms[owner]['users'][index]
+                    return make_response(), 200
+
+                else:
+                    return create_status_response("User no longer found in room.", 404)
+
+            else:
+                return create_status_response("You are not authorised to kick this user.", 403)
+
+        else:
+            return create_status_response("Room no longer exists.", 404)
 
 
 
