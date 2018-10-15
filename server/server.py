@@ -356,7 +356,9 @@ def message_handle():
             user = runtime_tokens[token]['username']
             if user in runtime_chat_rooms[owner]['users']:
                 messages = runtime_chat_rooms[owner]['message_bank']
-                return make_response(jsonify(messages))
+                return make_response(jsonify({
+                    "messages":messages
+                }))
 
 
 
