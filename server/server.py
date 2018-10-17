@@ -106,14 +106,11 @@ def login_user():
 
     if uName in creds:
         if creds[uName] == pWord:
-            if not already_logged_in(uName):
-                token = new_login(uName)
-                return make_response(jsonify({
-                    "token":token
-                })), 202
 
-            else:
-                return create_status_response("You are already logged in.")
+            token = new_login(uName)
+            return make_response(jsonify({
+                "token":token
+            })), 202
 
         else:
             return create_status_response("Incorrect credentials.")
@@ -278,13 +275,15 @@ def join_chat_room():
     if owner not in runtime_chat_rooms:
         return create_status_response("Room not found. The room may have expired, or the owner may have changed.", 400)
 
-    if user in runtime_chat_rooms[owner]['users']:
-        return create_status_response("You are already in this room.")
+
 
     if len(runtime_chat_rooms[owner]['users']) >= runtime_chat_rooms[owner]['max_users']:
         return create_status_response("Room full.", 403)
 
+    if user in runtime_chat_rooms[owner]['users']:
+        del runtime_chat_rooms[owner]['users'][runtime_chat_rooms[owner]['users'].index(user)]
 
+        #return create_status_response("You are already in this room.")
 
 
     room_password_attempt = ""
@@ -468,6 +467,12 @@ def already_logged_in(user):
         return False
 
 def new_login(user):
+    if already_logged_in(user):
+        del runtime_tokens[runtime_users[user]['token']]
+        del runtime_users[user]
+        del accessible_users[accessible_users.index(user)]
+
+
     token = str(codecs.encode(os.urandom(16), 'hex').decode())
     runtime_users[user] = {
         "token": token,
