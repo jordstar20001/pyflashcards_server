@@ -12,6 +12,8 @@ import json
 
 import codecs
 
+from flask_cors import CORS, cross_origin
+
 import os
 
 # RUNTIME VARS, REPLACE WITH ENV VARS
@@ -20,7 +22,7 @@ serverName = "Jordan's Test Server."
 
 listenIP = "0.0.0.0"
 
-listenPort = 21
+listenPort = 8080
 
 userCredsFile = "data/credentials.json"
 
@@ -41,6 +43,8 @@ runtime_chat_rooms = {}
 from flask import Flask, request, make_response, jsonify
 
 server = Flask(__name__)
+
+CORS(server)
 
 # START routing
 
