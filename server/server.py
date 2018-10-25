@@ -6,6 +6,8 @@
 
 from pathlib import Path
 
+from OpenSSL import SSL
+
 import time
 
 import json
@@ -16,7 +18,7 @@ from flask_cors import CORS, cross_origin
 
 import os
 
-# RUNTIME VARS, REPLACE WITH ENV VARS
+# RUNTIME VARS, REPLACE WITH JSON CONFIG FILE
 
 serverName = "Jordan's Test Server."
 
@@ -25,6 +27,8 @@ listenIP = "0.0.0.0"
 listenPort = 8080
 
 userCredsFile = "data/credentials.json"
+
+context = ('jz-software.pw.crt', 'jz-software.pw.key')
 
 # END RUNTIME VARS
 
@@ -39,6 +43,12 @@ accessible_users = []
 runtime_chat_rooms = {}
 
 # END OTHER VARS
+
+# context = SSL.Context(SSL.SSLv23_METHOD)
+# context.use_privatekey_file('privkey.pem')
+# context.use_certificate_file('cert.pem')
+
+
 
 from flask import Flask, request, make_response, jsonify
 
@@ -189,28 +199,29 @@ def create_chat_room():
 
 
     if uName in runtime_chat_rooms:
-        return create_status_response("You already have a chatroom.", 500)
+        # Delete chat room.
+        del runtime_chat_rooms[uName];
 
-    else:
 
-        runtime_chat_rooms[uName] = {
-            "users":[
-                uName
-            ],
 
-            "title":title,
+    runtime_chat_rooms[uName] = {
+        "users":[
+            uName
+        ],
 
-            "description":description,
+        "title":title,
 
-            "password":roomPassword,
+        "description":description,
 
-            "max_users":max_users,
+        "password":roomPassword,
 
-            "message_bank":[]
+        "max_users":max_users,
 
-        }
+        "message_bank":[]
 
-        return make_response(), 201
+    }
+
+    return make_response(), 201
 
 @server.route("/2/chatrooms/getall", methods=["GET"])
 def get_all_chat_rooms():
@@ -496,4 +507,4 @@ def new_login(user):
 
 
 
-server.run(listenIP, listenPort)
+server.run(listenIP, listenPort, ssl_context=context)
