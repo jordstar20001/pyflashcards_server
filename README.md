@@ -1,2 +1,2 @@
-# pymessenger_server
-Messenger server built with python and flask
+# pyflashcards_server
+Flash cards server built with python and flask
