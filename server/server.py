@@ -94,7 +94,9 @@ def sign_up_user():
 
     file.write(json.dumps(creds))
 
-    file.close();
+    file.close()
+
+    os.makedirs("data/" + uName)
 
     return make_response(), 201
 
@@ -152,277 +154,20 @@ def log_out_user():
     accessible_users.remove(user)
     return make_response(), 200
 
+# ---------------------- /2/ (server ops) ------------------------
 
-# ----------------------------------------------------- /////2\\\\\ -------------------------------
-
-@server.route("/2/users", methods=["GET"])
-def get_online_users():
+@server.route("/2/flashcard", methods=["GET"])
+def get_flash_card():
     if not token_auth(request):
         return make_response(), 403
 
-    userList = accessible_users
-    resp = {
-        "users": userList
-    }
+    token = request.headers["Token"]
+    user = runtime_tokens[token]['username']
 
-    return make_response(jsonify(resp)), 200
+    
 
 
-
-@server.route("/2/chatrooms/create", methods=["POST"])
-def create_chat_room():
-    if not token_auth(request):
-        return make_response(), 403
-
-    if not request.is_json:
-        return make_response(), 400
-
-
-    reqJson = request.get_json()
-
-    uName = reqJson['username']
-
-    title = reqJson['title']
-
-    description = reqJson['description']
-
-    roomPassword = reqJson['room_password']
-
-    max_users = reqJson['max_users']
-
-    # VALIDATION
-
-    for val in reqJson:
-        if len(str(reqJson[val])) == 0 and val != 'room_password':
-            return create_status_response("Invalid input.", 500);
-
-
-
-    if uName in runtime_chat_rooms:
-        # Delete chat room.
-        del runtime_chat_rooms[uName];
-
-
-
-    runtime_chat_rooms[uName] = {
-        "users":[
-            uName
-        ],
-
-        "title":title,
-
-        "description":description,
-
-        "password":roomPassword,
-
-        "max_users":max_users,
-
-        "message_bank":[]
-
-    }
-
-    return make_response(), 201
-
-@server.route("/2/chatrooms/getall", methods=["GET"])
-def get_all_chat_rooms():
-    if not token_auth(request):
-        return make_response(), 403
-
-    listResp = []
-    for owner in runtime_chat_rooms:
-        listResp.append(owner)
-
-    return make_response(jsonify({
-        "rooms":listResp,
-    })), 200
-
-
-@server.route("/2/chatrooms/get", methods=["POST"]) # TODO refactor this so it is GET and uses URL to pass id
-def get_chat_room_info():
-    if not token_auth(request):
-        return make_response(), 403
-
-    if not request.is_json:
-        return make_response(), 400
-
-    reqJson = request.get_json()
-
-    owner = reqJson['owner']
-
-    if owner in runtime_chat_rooms:
-        passwordEnabled = False
-        currentRoom = runtime_chat_rooms[owner]
-        if currentRoom['password'] != "":
-            passwordEnabled = True
-        resp = make_response(jsonify({
-            "users": currentRoom['users'],
-            "title": currentRoom['title'],
-            "description": currentRoom['description'],
-            "max_users": currentRoom['max_users'],
-            "password_enabled": passwordEnabled,
-
-
-        }))
-
-        return resp, 200
-
-    else:
-        return create_status_response("Room not found. The room may have expired, or the owner may have changed.", 500)
-
-@server.route("/2/chatrooms/join", methods=["POST"]) # TODO refactor this so it is GET and uses URL to pass id
-def join_chat_room():
-
-    if not token_auth(request):
-        return make_response(), 403
-
-    if not request.is_json:
-        return make_response(), 400
-
-    reqJson = request.get_json()
-
-    owner = reqJson['owner']
-
-    user = reqJson['username']
-
-    if not token_auth_with_user(request, user):
-        return create_status_response("User not authenticated.", 403)
-
-    if owner not in runtime_chat_rooms:
-        return create_status_response("Room not found. The room may have expired, or the owner may have changed.", 400)
-
-
-
-    if len(runtime_chat_rooms[owner]['users']) >= runtime_chat_rooms[owner]['max_users']:
-        return create_status_response("Room full.", 403)
-
-    if user in runtime_chat_rooms[owner]['users']:
-        del runtime_chat_rooms[owner]['users'][runtime_chat_rooms[owner]['users'].index(user)]
-
-        #return create_status_response("You are already in this room.")
-
-
-    room_password_attempt = ""
-
-    if 'password' in reqJson:
-        room_password_attempt = reqJson['password']
-
-    if room_password_attempt == runtime_chat_rooms[owner]['password']:
-        token = request.headers["Token"]
-        runtime_chat_rooms[owner]['users'].append(runtime_tokens[token]['username'])
-        return make_response(), 200
-
-    else:
-        return create_status_response("Incorrect password for room.", 403)
-
-
-
-
-
-@server.route("/2/chatrooms/message", methods=["POST", "GET"])
-def message_handle():
-    # New message
-    if request.method == "POST":
-        if not request.is_json:
-            return make_response(), 400
-
-        if not token_auth(request):
-            return make_response(), 403
-
-        # Get data
-
-        reqJson = request.get_json()
-
-        username = reqJson['username']
-
-        owner = reqJson['owner']
-
-        message = reqJson['message']
-
-        if owner not in runtime_chat_rooms:
-            return create_status_response("Room not found.", 400)
-
-        if username in runtime_chat_rooms[owner]['users']:
-            if token_auth_with_user(request, username):
-                if(new_message_in_chatroom(username, owner, message)):
-                    return make_response(), 201
-
-                else:
-                    return create_status_response("Message was not sent.", 500)
-
-            else:
-                return make_response(), 403
-
-        else:
-            return create_status_response("Disconnected. You have been kicked.", 403)
-
-
-
-
-
-
-
-
-
-        return "NotImplementedException"
-
-    # Read messages
-    elif request.method == "GET":
-        if not token_auth(request):
-            return make_response(), 403
-
-        else:
-            token = request.headers["Token"]
-            owner = request.headers["Owner"]
-            user = runtime_tokens[token]['username']
-            if owner in runtime_chat_rooms:
-                if user in runtime_chat_rooms[owner]['users']:
-                    messages = runtime_chat_rooms[owner]['message_bank']
-                    return make_response(jsonify({
-                        "messages":messages
-                    })), 200
-
-                else:
-                    return create_status_response("Disconnected. You have been kicked.", 403)
-
-            else:
-                return create_status_response("Disconnected. Room closed.", 404);
-
-
-
-@server.route("/2/chatrooms/management/users", methods=["DELETE"])
-def kick_user():
-    if not token_auth(request):
-        return make_response(), 403
-
-    else:
-        token = request.headers["Token"]
-        owner = request.headers["Owner"]
-        userToKick = request.headers["UserKick"]
-
-        user = runtime_tokens[token]['username']
-        if owner in runtime_chat_rooms:
-            if owner == user or userToKick == user:
-                if userToKick in runtime_chat_rooms[owner]['users']:
-                    if userToKick == owner:
-                        del runtime_chat_rooms[owner]
-                        return make_response(), 200
-
-                    index = runtime_chat_rooms[owner]['users'].index(userToKick)
-                    del runtime_chat_rooms[owner]['users'][index]
-                    return make_response(), 200
-
-                else:
-                    return create_status_response("User no longer found in room.", 404)
-
-            else:
-                return create_status_response("You are not authorised to kick this user.", 403)
-
-        else:
-            return create_status_response("Room no longer exists.", 404)
-
-
-
-
+@server.route("/2/flashcard", methods=["POST"])
 
 # END routing
 
